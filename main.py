@@ -1,11 +1,12 @@
 import logging
 import blessed
+import sys
 from getpass import getpass
 from argparse import ArgumentParser
 
 from chat.session import Session
 from chat.menu import menu
-from utils import getAlgorithm
+from utils import getAlgorithm, getTopology
 
 term = blessed.Terminal()
 
@@ -13,10 +14,16 @@ if __name__ == '__main__':
   # Start the fullscreen mode, clearing the terminal
   with term.fullscreen():
     parser = ArgumentParser()
+
     # add arguments to parser
     parser.add_argument("-j", "--jid", dest="jid", help="JID to use")
     parser.add_argument("-p", "--password", dest="password", help="password to use")
+    parser.add_argument("-n", "--name", dest="name", help="Name of the node")
     parser.add_argument("-a", "--algorithm", dest="alg", help="algorithm to use")
+    parser.add_argument("-t", "--topology", dest="top", help="Topology to use")
+    if len(sys.argv)==1:
+      parser.print_help(sys.stderr)
+      sys.exit(1)
     args = parser.parse_args()
 
     #If not arguments were passed, ask for them
@@ -29,10 +36,11 @@ if __name__ == '__main__':
 
     # Select algorithm to use
     algorithm = getAlgorithm(args.alg)
-      
+    relations = getTopology(args.top)
+
     """ Start an instance of our session manager and register
     all plugins necessary """
-    xmpp = Session(args.jid, args.password)
+    xmpp = Session(args.jid, args.password, relations, algorithm, args.name)
     xmpp.register_plugin('xep_0030') # Service Discovery
     xmpp.register_plugin('xep_0004') # Data forms
     xmpp.register_plugin('xep_0060') # PubSub

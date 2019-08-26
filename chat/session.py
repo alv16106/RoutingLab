@@ -3,6 +3,8 @@ from slixmpp.exceptions import IqError, IqTimeout
 from slixmpp.xmlstream.asyncio import asyncio
 from threading import Thread
 from chat.menu import menu
+from utils import getNeighbours
+import pickle
 import logging
 import sys
 import uuid
@@ -11,26 +13,20 @@ import blessed
 # Start the blessed terminal used for UI
 term = blessed.Terminal()
 
-# Available statuses to change to
-status = [
-  'available',
-  'unavailable'
-]
-
 class Session(ClientXMPP):
 
-  def __init__(self, jid, password):
+  def __init__(self, jid, password, relations, algorithm, name):
     ClientXMPP.__init__(self, jid, password)
     """ Add all event handlers, nickname and
     start reciever in alumnchat """
     self.add_event_handler("session_start", self.session_start)
     self.add_event_handler("message", self.message)
-    self.add_event_handler("socks5_connected", self.stream_opened)
-    self.add_event_handler("socks5_data", self.stream_data)
-    self.add_event_handler("socks5_closed", self.stream_closed)
     self.room = 'alumnos'
     self.current_reciever = 'alumchat.xyz'
     self.auto_subscribe = True
+    self.relations = relations
+    self.algorithm = algorithm
+    self.neighbours = getNeighbours(relations, name)
     # Functions sent as arguments to main menu
     functions = {
       'dc': self.dc_and_exit,
@@ -38,10 +34,11 @@ class Session(ClientXMPP):
       'add': self.add_contact,
       'rm': self.delete_account,
       'send_message': self.message_sender,
-      'jc': self.join_conversation
+      'jc': self.join_conversation,
+      'find': self.start_algorithm
     }
     self.menuInstance = Thread(target = menu, args = (functions,))
-    # self.add_event_handler("register", self.register)
+    self.add_event_handler("register", self.register)
 
   def session_start(self, event):
     """ Handler for successful connection,
@@ -49,6 +46,11 @@ class Session(ClientXMPP):
     self.send_presence()
     self.get_roster()
     self.menuInstance.start()
+  
+  def start_algorithm(self, args):
+    """ Where the magic happens, start sending hellos to neighbours
+    and hope for the best """
+    pass
     
   def dc_and_exit(self, args):
     """ Disconect from server and exit the 
