@@ -12,13 +12,12 @@ def getTopology(file):
   return relations
 
 def getNeighbours(relations, name):
-  neighbours = []
+  neighbours = {}
   for r in relations:
     if (r[0] == name):
-      neighbours.append({"neighbour": r[1], "distance": r[2]})
+      neighbours[r[1]] = r[2]
     elif (r[1] == name):
-      neighbours.append({"neighbour": r[0], "distance": r[2]})
-  print(neighbours)
+      neighbours[r[0]] = r[2]
   return neighbours
 
 def getAlgorithm(a):

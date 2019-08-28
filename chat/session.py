@@ -4,6 +4,7 @@ from slixmpp.xmlstream.asyncio import asyncio
 from threading import Thread
 from chat.menu import menu
 from utils import getNeighbours
+from graph import Graph
 import pickle
 import logging
 import sys
@@ -27,6 +28,8 @@ class Session(ClientXMPP):
     self.relations = relations
     self.algorithm = algorithm
     self.neighbours = getNeighbours(relations, name)
+    self.graph = Graph()
+    self.name = name
     # Functions sent as arguments to main menu
     functions = {
       'dc': self.dc_and_exit,
@@ -45,6 +48,13 @@ class Session(ClientXMPP):
     start the menu thread """
     self.send_presence()
     self.get_roster()
+
+    #Start the graph by adding ourselves and our neighbours
+    self.graph.addNode(self.name)
+    for node in self.neighbours:
+      print(node)
+      self.graph.addNode(node)
+      self.graph.addEdge(self.name, node, self.neighbours[node])
     self.menuInstance.start()
   
   def start_algorithm(self, args):
