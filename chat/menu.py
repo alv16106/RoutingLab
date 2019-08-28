@@ -9,7 +9,7 @@ options = {
   '/add': 'Add user to contacts - /add [contact]',
   '/jc': 'Join Conversation /jc [contact]',
   '/rm': 'Remove account from server',
-  '/d': 'Direct Message',
+  '/d': 'Direct Message /d node_letter',
   '/h': 'Help'
 }
 

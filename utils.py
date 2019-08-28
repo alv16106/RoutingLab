@@ -23,7 +23,7 @@ def getNeighbours(relations, name):
 
 def getAlgorithm(a):
   switcher = {
-    "flooding": algorithms.flooding.flooding,
+    "flooding": "flooding",#algorithms.flooding.flooding,
     "dvr": algorithms.dvr.dvr,
     "lsr": algorithms.lsr.lsr
   }
