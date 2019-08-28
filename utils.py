@@ -1,6 +1,7 @@
 import algorithms.dvr
 import algorithms.flooding
 import algorithms.lsr
+import json
 
 def getTopology(file):
   relations = []
@@ -27,3 +28,10 @@ def getAlgorithm(a):
     "lsr": algorithms.lsr.lsr
   }
   return switcher.get(a, algorithms.flooding.flooding)
+
+def generateLSP(node, neighbour_info, serial):
+  return json.dumps({
+    'node': node,
+    'neighbourhood': neighbour_info,
+    'serial': serial,
+  })
