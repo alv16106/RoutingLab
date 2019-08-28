@@ -124,14 +124,14 @@ class Session(ClientXMPP):
           print(term.magenta(str(msg['from'])+ ' > ') + term.color(55)(body['msg']))
         else:
           next_hop = path.index(self.name) + 1
-          self.send_message(mto = 'g1_'+path[next_hop]+"@alumchat.xyz", mbody = msg['body'], msubject = 'lsr_message', mfrom = self.boundjid)
+          self.send_message(mto = path[next_hop]+"@alumchat.xyz", mbody = msg['body'], msubject = 'lsr_message', mfrom = self.boundjid)
       else:
         print(term.magenta(str(msg['from'])+ ' > ') + term.color(55)(msg['body']))
       
   def send_to_neighbours(self, message, subject):
     for neighbour in self.neighbours:
-      self.send_message(mto = 'g1_'+neighbour+"@alumchat.xyz", mbody = generateLSP(self.name, self.neighbours, self.serial), msubject = subject, mfrom = self.boundjid)
-      self.send_message(mto = 'g1_'+neighbour+"@alumchat.xyz", mbody = message, msubject = subject, mfrom = self.boundjid)
+      self.send_message(mto = neighbour+"@alumchat.xyz", mbody = generateLSP(self.name, self.neighbours, self.serial), msubject = subject, mfrom = self.boundjid)
+      self.send_message(mto = neighbour+"@alumchat.xyz", mbody = message, msubject = subject, mfrom = self.boundjid)
 
   def add_contact(self, contact):
     """ Add contact to contact list
@@ -163,7 +163,7 @@ class Session(ClientXMPP):
     if self.algorithm == "flooding":
       body = {
           "og_from": str(self.boundjid),
-          "final_to": 'g1_'+args+"@alumchat.xyz",
+          "final_to": args+"@alumchat.xyz",
           "hops": 3,
           "distance": 0,
           "node_list": self.boundjid.jid,
@@ -174,19 +174,19 @@ class Session(ClientXMPP):
       for x in self.neighbours:
         body["weight"] = self.neighbours[x]
         jbody = json.dumps(body)
-        self.send_message(mto = 'g1_'+x+"@alumchat.xyz", mbody = jbody, msubject = 'flood', mfrom = self.boundjid)
+        self.send_message(mto = x+"@alumchat.xyz", mbody = jbody, msubject = 'flood', mfrom = self.boundjid)
     elif self.algorithm_name == 'lsr':
       path = shortest_path(self.graph, self.name, args.upper())
       body = {
         'from': self.name,
-        'to': 'g1_'+args+"@alumchat.xyz",
+        'to': args+"@alumchat.xyz",
         'path': path[1],
         'distance': path[0],
         'msg': content
       }
-      self.send_message(mto = 'g1_'+path[1][1]+"@alumchat.xyz", mbody = json.dumps(body), msubject = 'lsr_message', mfrom = self.boundjid)
+      self.send_message(mto = path[1][1]+"@alumchat.xyz", mbody = json.dumps(body), msubject = 'lsr_message', mfrom = self.boundjid)
     else:
-      self.send_message(mto = 'g1_'+args+"@alumchat.xyz", mbody = content, msubject = 'normal chat', mfrom = self.boundjid)
+      self.send_message(mto = args+"@alumchat.xyz", mbody = content, msubject = 'normal chat', mfrom = self.boundjid)
 
   def resend(self, og, sender):
     body = {
@@ -199,10 +199,10 @@ class Session(ClientXMPP):
       "weight": og["weight"]
     }
     for x in self.neighbours:
-      if 'g1_'+x.lower()+"@alumchat.xyz" != str(sender).split("/")[0]:
+      if x.lower()+"@alumchat.xyz" != str(sender).split("/")[0]:
         body["weight"] = body["weight"] + self.neighbours[x]
         jbody = json.dumps(body)
-        self.send_message(mto = 'g1_'+x+"@alumchat.xyz", mbody = jbody, msubject = 'flood', mfrom = self.boundjid)
+        self.send_message(mto = x+"@alumchat.xyz", mbody = jbody, msubject = 'flood', mfrom = self.boundjid)
 
      
   def delete_account(self, args):
