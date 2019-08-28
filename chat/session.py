@@ -16,6 +16,13 @@ import json
 # Start the blessed terminal used for UI
 term = blessed.Terminal()
 
+mem = {
+      "emisor": "R",
+      "weight": 100,
+      "nodes": "none",
+      "msg": "msg"
+    }
+
 class Session(ClientXMPP):
 
   def __init__(self, jid, password, relations, algorithm, name):
@@ -87,22 +94,33 @@ class Session(ClientXMPP):
   
   def message(self, msg):
     """ Handler for normal messages """
-    #if msg['type'] in ('chat', 'normal'):
-      #print(term.magenta(str(msg['from'])+ ' > ') + term.color(55)(msg['body']))
-    if msg['subject'] in ('flood'):
-      #print(term.cyan(str(msg['from'])+ ' > ') + term.color(55)(msg['body']))
-      jmsg = msg['body']
-      og_msg = json.loads(jmsg)
-      if og_msg["final_to"] == self.boundjid.jid.split("/")[0]:
-        print(term.cyan(str(msg['from']) +": "+og_msg['msg']))
-        return 0
-      elif og_msg["hops"] != 0:
-        self.resend(og_msg)
-    elif msg['subject'] in ('start', 'resend'):
-      print("LSR package: ", msg['body'], msg['subject'], msg['from'], self.algorithm_name)
-      resend_message = self.algorithm(self, msg)
-      print(resend_message)
-      self.send_to_neighbours(resend_message, "resend") if resend_message else None
+    if msg['type'] in ('chat', 'normal'):
+      if msg['subject'] in ('flood'):
+        #print(term.cyan(str(msg['from'])+ ' > ') + term.color(55)(msg['body']))
+        jmsg = msg['body']
+        og_msg = json.loads(jmsg)
+        if og_msg["final_to"] == self.boundjid.jid.split("/")[0]:
+          if og_msg["og_from"] == mem["emisor"] and og_msg["msg"] == mem["msg"]:
+            if int(og_msg["weight"]) < mem["weight"]:
+              mem["weight"] = og_msg["weight"]
+              mem["nodes"] = og_msg["node_list"]
+          else:
+            print(mem["weight"])
+            print(mem["nodes"])
+            print(term.cyan(og_msg["og_from"] +": "+og_msg['msg']))
+            mem["weight"] = 100
+            mem["emisor"] = og_msg["og_from"]
+            mem["msg"] = og_msg['msg']
+            return 0
+        elif og_msg["hops"] != 0:
+          self.resend(og_msg, msg['from'])
+      elif msg['subject'] in ('start', 'resend'):
+        print("LSR package: ", msg['body'], msg['subject'], msg['from'], self.algorithm_name)
+        resend_message = self.algorithm(self, msg)
+        print(resend_message)
+        self.send_to_neighbours(resend_message, "resend") if resend_message else None
+      else:
+        print(term.magenta(str(msg['from'])+ ' > ') + term.color(55)(msg['body']))
       
   def send_to_neighbours(self, message, subject):
     print("sending to: ", self.neighbours)
@@ -136,30 +154,40 @@ class Session(ClientXMPP):
     self.send_message(mto=self.current_reciever, mbody=args, msubject='normal message', mfrom=self.boundjid)
 
   def direct_message(self, args):
-    body = {
-        "final_to": 'g1_d'+"@alumchat.xyz",
-        "hops": 5,
-        "distance": 0,
-        "node_list": self.boundjid.jid,
-        "msg": args
-      }
-    jbody = json.dumps(body)
-    #Send Direct Message
-    for x in self.neighbours:
-      self.send_message(mto = 'g1_'+x+"@alumchat.xyz", mbody = jbody, msubject = 'flood', mfrom = self.boundjid)
+    content = input('Mensaje?  ')
+    if self.algorithm == "flooding":
+      body = {
+          "og_from": str(self.boundjid),
+          "final_to": 'g1_'+args+"@alumchat.xyz",
+          "hops": 3,
+          "distance": 0,
+          "node_list": self.boundjid.jid,
+          "msg": content,
+          "weight": 0,
+        }
+      #Send Direct Message
+      for x in self.neighbours:
+        body["weight"] = self.neighbours[x]
+        jbody = json.dumps(body)
+        self.send_message(mto = 'g1_'+x+"@alumchat.xyz", mbody = jbody, msubject = 'flood', mfrom = self.boundjid)
+    else:
+      self.send_message(mto = 'g1_'+args+"@alumchat.xyz", mbody = content, msubject = 'normal chat', mfrom = self.boundjid)
 
-  def resend(self, og):
+  def resend(self, og, sender):
     body = {
-      "final_to": 'g1_d'+"@alumchat.xyz",
+      "og_from": og["og_from"],
+      "final_to": og["final_to"],
       "hops": og["hops"] - 1,
       "distance": og["distance"] + 1,
       "node_list": og["node_list"] + self.boundjid.jid,
-      "msg": og["msg"]
+      "msg": og["msg"],
+      "weight": og["weight"]
     }
-    jbody = json.dumps(body)
     for x in self.neighbours:
-      if 'g1_'+x['neighbour']+"@alumchat.xyz" != self.boundjid.jid.split("/")[0]:
-        self.send_message(mto = 'g1_'+x['neighbour']+"@alumchat.xyz", mbody = jbody, msubject = 'flood', mfrom = self.boundjid)
+      if 'g1_'+x.lower()+"@alumchat.xyz" != str(sender).split("/")[0]:
+        body["weight"] = body["weight"] + self.neighbours[x]
+        jbody = json.dumps(body)
+        self.send_message(mto = 'g1_'+x+"@alumchat.xyz", mbody = jbody, msubject = 'flood', mfrom = self.boundjid)
 
      
   def delete_account(self, args):
