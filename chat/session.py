@@ -10,6 +10,8 @@ import logging
 import sys
 import uuid
 import blessed
+import algorithms.flooding as f
+import json
 
 # Start the blessed terminal used for UI
 term = blessed.Terminal()
@@ -38,7 +40,8 @@ class Session(ClientXMPP):
       'rm': self.delete_account,
       'send_message': self.message_sender,
       'jc': self.join_conversation,
-      'find': self.start_algorithm
+      'find': self.start_algorithm,
+      'd' : self.direct_message
     }
     self.menuInstance = Thread(target = menu, args = (functions,))
     self.add_event_handler("register", self.register)
@@ -78,9 +81,19 @@ class Session(ClientXMPP):
   
   def message(self, msg):
     """ Handler for normal messages """
-    if msg['type'] in ('chat', 'normal'):
-      print(term.magenta(str(msg['from'])+ ' > ') + term.color(55)(msg['body']))
-
+    #if msg['type'] in ('chat', 'normal'):
+      #print(term.magenta(str(msg['from'])+ ' > ') + term.color(55)(msg['body']))
+    if msg['subject'] in ('flood'):
+      #print(term.cyan(str(msg['from'])+ ' > ') + term.color(55)(msg['body']))
+      jmsg = msg['body']
+      og_msg = json.loads(jmsg)
+      if og_msg["final_to"] == self.boundjid.jid.split("/")[0]:
+        print(term.cyan(str(msg['from']) +": "+og_msg['msg']))
+        return 0
+      elif og_msg["hops"] != 0:
+        self.resend(og_msg)
+      
+  
   def add_contact(self, contact):
     """ Add contact to contact list
     TODO: Currently no handling of error when adding user """
@@ -105,6 +118,33 @@ class Session(ClientXMPP):
     """ Send normal message
     TODO: Make it alternate between muc and normal given the conversation context """
     self.send_message(mto=self.current_reciever, mbody=args, msubject='normal message', mfrom=self.boundjid)
+
+  def direct_message(self, args):
+    body = {
+        "final_to": 'g1_d'+"@alumchat.xyz",
+        "hops": 5,
+        "distance": 0,
+        "node_list": self.boundjid.jid,
+        "msg": args
+      }
+    jbody = json.dumps(body)
+    #Send Direct Message
+    for x in self.neighbours:
+      self.send_message(mto = 'g1_'+x['neighbour']+"@alumchat.xyz", mbody = jbody, msubject = 'flood', mfrom = self.boundjid)
+
+  def resend(self, og):
+    body = {
+      "final_to": 'g1_d'+"@alumchat.xyz",
+      "hops": og["hops"] - 1,
+      "distance": og["distance"] + 1,
+      "node_list": og["node_list"] + self.boundjid.jid,
+      "msg": og["msg"]
+    }
+    jbody = json.dumps(body)
+    for x in self.neighbours:
+      if 'g1_'+x['neighbour']+"@alumchat.xyz" != self.boundjid.jid.split("/")[0]:
+        self.send_message(mto = 'g1_'+x['neighbour']+"@alumchat.xyz", mbody = jbody, msubject = 'flood', mfrom = self.boundjid)
+
      
   def delete_account(self, args):
     """ Helper function to delete account """
@@ -144,4 +184,5 @@ class Session(ClientXMPP):
     except IqTimeout:
       logging.error("No response from server.")
       self.disconnect()
-    
+
+
