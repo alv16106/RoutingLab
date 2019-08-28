@@ -95,7 +95,6 @@ class Session(ClientXMPP):
     """ Handler for normal messages """
     if msg['type'] in ('chat', 'normal'):
       if msg['subject'] in ('flood'):
-        #print(term.cyan(str(msg['from'])+ ' > ') + term.color(55)(msg['body']))
         jmsg = msg['body']
         og_msg = json.loads(jmsg)
         if og_msg["final_to"] == self.boundjid.jid.split("/")[0]:
@@ -107,7 +106,8 @@ class Session(ClientXMPP):
             print(mem["weight"])
             print(mem["nodes"])
             print(term.cyan(og_msg["og_from"] +": "+og_msg['msg']))
-            mem["weight"] = 100
+            mem["weight"] = og_msg["weight"]
+            mem["nodes"] = og_msg["node_list"]
             mem["emisor"] = og_msg["og_from"]
             mem["msg"] = og_msg['msg']
             return 0
