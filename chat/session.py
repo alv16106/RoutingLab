@@ -4,7 +4,7 @@ from slixmpp.xmlstream.asyncio import asyncio
 from threading import Thread
 from chat.menu import menu
 from utils import getNeighbours, getAlgorithm, generateLSP
-from graph import Graph
+from graph import Graph, shortest_path
 import pickle
 import logging
 import sys
@@ -65,7 +65,6 @@ class Session(ClientXMPP):
     #Start the graph by adding ourselves and our neighbours
     self.graph.addNode(self.name)
     for node in self.neighbours:
-      print(node)
       self.graph.addNode(node)
       self.graph.addEdge(self.name, node, self.neighbours[node])
     self.start_algorithm({})
@@ -115,15 +114,21 @@ class Session(ClientXMPP):
         elif og_msg["hops"] != 0:
           self.resend(og_msg, msg['from'])
       elif msg['subject'] in ('start', 'resend'):
-        print("LSR package: ", msg['body'], msg['subject'], msg['from'], self.algorithm_name)
         resend_message = self.algorithm(self, msg)
-        print(resend_message)
         self.send_to_neighbours(resend_message, "resend") if resend_message else None
+      elif msg['subject'] in ('lsr_message'):
+        body = json.loads(msg['body'])
+        path = body['path']
+        print(path)
+        if path[-1] == self.name:
+          print(term.magenta(str(msg['from'])+ ' > ') + term.color(55)(body['msg']))
+        else:
+          next_hop = path.index(self.name) + 1
+          self.send_message(mto = 'g1_'+path[next_hop]+"@alumchat.xyz", mbody = msg['body'], msubject = 'lsr_message', mfrom = self.boundjid)
       else:
         print(term.magenta(str(msg['from'])+ ' > ') + term.color(55)(msg['body']))
       
   def send_to_neighbours(self, message, subject):
-    print("sending to: ", self.neighbours)
     for neighbour in self.neighbours:
       self.send_message(mto = 'g1_'+neighbour+"@alumchat.xyz", mbody = generateLSP(self.name, self.neighbours, self.serial), msubject = subject, mfrom = self.boundjid)
       self.send_message(mto = 'g1_'+neighbour+"@alumchat.xyz", mbody = message, msubject = subject, mfrom = self.boundjid)
@@ -170,6 +175,16 @@ class Session(ClientXMPP):
         body["weight"] = self.neighbours[x]
         jbody = json.dumps(body)
         self.send_message(mto = 'g1_'+x+"@alumchat.xyz", mbody = jbody, msubject = 'flood', mfrom = self.boundjid)
+    elif self.algorithm_name == 'lsr':
+      path = shortest_path(self.graph, self.name, args.upper())
+      body = {
+        'from': self.name,
+        'to': 'g1_'+args+"@alumchat.xyz",
+        'path': path[1],
+        'distance': path[0],
+        'msg': content
+      }
+      self.send_message(mto = 'g1_'+path[1][1]+"@alumchat.xyz", mbody = json.dumps(body), msubject = 'lsr_message', mfrom = self.boundjid)
     else:
       self.send_message(mto = 'g1_'+args+"@alumchat.xyz", mbody = content, msubject = 'normal chat', mfrom = self.boundjid)
 

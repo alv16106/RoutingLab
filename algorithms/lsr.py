@@ -1,9 +1,7 @@
 import json
 
 def lsr(session, msg):
-    print('in algorithm: ', session.lsps)
     lsp = json.loads(msg['body'])
-    print(lsp)
     graph = session.graph
     if lsp["node"] in session.lsps:
         if lsp["serial"] <= session.lsps[lsp["node"]]["serial"]:
