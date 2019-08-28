@@ -35,12 +35,11 @@ if __name__ == '__main__':
       args.alg = input("Algorithm: ")
 
     # Select algorithm to use
-    algorithm = getAlgorithm(args.alg)
     relations = getTopology(args.top)
 
     """ Start an instance of our session manager and register
     all plugins necessary """
-    xmpp = Session(args.jid, args.password, relations, algorithm, args.name)
+    xmpp = Session(args.jid, args.password, relations, args.alg, args.name)
     xmpp.register_plugin('xep_0030') # Service Discovery
     xmpp.register_plugin('xep_0004') # Data forms
     xmpp.register_plugin('xep_0060') # PubSub

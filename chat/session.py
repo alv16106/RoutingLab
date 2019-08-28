@@ -3,7 +3,7 @@ from slixmpp.exceptions import IqError, IqTimeout
 from slixmpp.xmlstream.asyncio import asyncio
 from threading import Thread
 from chat.menu import menu
-from utils import getNeighbours
+from utils import getNeighbours, getAlgorithm, generateLSP
 from graph import Graph
 import pickle
 import logging
@@ -28,10 +28,13 @@ class Session(ClientXMPP):
     self.current_reciever = 'alumchat.xyz'
     self.auto_subscribe = True
     self.relations = relations
-    self.algorithm = algorithm
+    self.algorithm_name = algorithm
+    self.algorithm = getAlgorithm(algorithm)
+    self.serial = 1
     self.neighbours = getNeighbours(relations, name)
     self.graph = Graph()
     self.name = name
+    self.lsps = {}
     # Functions sent as arguments to main menu
     functions = {
       'dc': self.dc_and_exit,
@@ -58,12 +61,15 @@ class Session(ClientXMPP):
       print(node)
       self.graph.addNode(node)
       self.graph.addEdge(self.name, node, self.neighbours[node])
+    self.start_algorithm({})
     self.menuInstance.start()
   
   def start_algorithm(self, args):
     """ Where the magic happens, start sending hellos to neighbours
     and hope for the best """
-    pass
+    if self.algorithm_name in ('lsr', 'dvr'):
+      self.send_to_neighbours(generateLSP(self.name, self.neighbours, self.serial), "start")
+      self.serial += 1
     
   def dc_and_exit(self, args):
     """ Disconect from server and exit the 
@@ -92,8 +98,18 @@ class Session(ClientXMPP):
         return 0
       elif og_msg["hops"] != 0:
         self.resend(og_msg)
+    elif msg['subject'] in ('start', 'resend'):
+      print("LSR package: ", msg['body'], msg['subject'], msg['from'], self.algorithm_name)
+      resend_message = self.algorithm(self, msg)
+      print(resend_message)
+      self.send_to_neighbours(resend_message, "resend") if resend_message else None
       
-  
+  def send_to_neighbours(self, message, subject):
+    print("sending to: ", self.neighbours)
+    for neighbour in self.neighbours:
+      self.send_message(mto = 'g1_'+neighbour+"@alumchat.xyz", mbody = generateLSP(self.name, self.neighbours, self.serial), msubject = subject, mfrom = self.boundjid)
+      self.send_message(mto = 'g1_'+neighbour+"@alumchat.xyz", mbody = message, msubject = subject, mfrom = self.boundjid)
+
   def add_contact(self, contact):
     """ Add contact to contact list
     TODO: Currently no handling of error when adding user """
@@ -130,7 +146,7 @@ class Session(ClientXMPP):
     jbody = json.dumps(body)
     #Send Direct Message
     for x in self.neighbours:
-      self.send_message(mto = 'g1_'+x['neighbour']+"@alumchat.xyz", mbody = jbody, msubject = 'flood', mfrom = self.boundjid)
+      self.send_message(mto = 'g1_'+x+"@alumchat.xyz", mbody = jbody, msubject = 'flood', mfrom = self.boundjid)
 
   def resend(self, og):
     body = {

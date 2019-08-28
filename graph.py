@@ -11,9 +11,14 @@ class Graph(object):
             self.nodes.add(node)
 
     def addEdge(self, f, to, distance):
-        self.edges[f].append(to)
-        self.edges[to].append(f)
+        self.edges[f].append(to) if to not in self.edges[f] else None
+        self.edges[to].append(f) if f not in self.edges[to] else None
         self.distances[(f, to)] = distance
+        self.distances[(to, f)] = distance
+    
+    def updateEdge(f, to, distance):
+        self.distances[(f, to)] = distance
+        self.distances[(to, f)] = distance
 
 def dijkstra(graph, initial):
     visited = {initial: 0}
