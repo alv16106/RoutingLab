@@ -1,8 +1,8 @@
-A B 5
-A C 3
-A D 4
-B F 7
-C E 3
-D G 6
-E F 3
-G F 2
+G1_A G1_B 5
+G1_A G1_C 3
+G1_A G1_D 4
+G1_B G1_F 7
+G1_C G1_E 3
+G1_D G1_G 6
+G1_E G1_F 3
+G1_G G1_F 2
